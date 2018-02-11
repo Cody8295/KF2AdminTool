@@ -10,6 +10,8 @@ import java.net.HttpCookie;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.time.LocalDateTime;
+import java.time.ChronoUnit;
 
 public class voter
 {
@@ -20,9 +22,16 @@ public class voter
     private static CookieManager cookieManager;
     private static String settings = "settings_bUsedForTakeover=0&settings_ServerName=Delivery+Boys+-+Long%2FSuicidal%2FHoE&settings_MaxIdleTime=0.0000&settings_MaxPlayers=6&settings_bAntiCheatProtected=1&settings_GameDifficulty=*.0000&settings_GameDifficulty_raw=0.000000&settings_GameLength=2&settings_bDisableTeamCollision=1&settings_bAdminCanPause=0&settings_bSilentAdminLogin=1&settings_bDisableMapVote=0&settings_MapVoteDuration=60.0000&settings_MapVotePercentage=0.0000&settings_bDisableKickVote=0&settings_KickVotePercentage=0.5100&settings_bDisablePublicTextChat=0&settings_bPartitionSpectators=0&settings_bDisableVOIP=0&liveAdjust=1&action=save";
     private static Map<String,Integer> vote;
+    private static Map<String,Integer> notifs;
+    private static Map<String,LocalDateTime> notifTimes;
+    private static String notif1 = "You can vote to change the difficulty of the game by sending !diff x where x is some integer between 0 and 3";
 
     public static void main(String[] args) throws Exception
     {
+	notifs = new HashMap<String,Integer>();
+	notifTimes = new HashMap<String,LocalDateTime>();
+	notifTimes.put(notif1,LocalDateTime.now());
+	notifs.put(notif1,120);
 	vote = new HashMap<String,Integer>();
 	cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
 	CookieHandler.setDefault(cookieManager);
@@ -46,44 +55,71 @@ public class voter
 	return -1; // couldn't find
     }
 
+    public static String[] parseChat(String rawMsg)
+    {
+	String[] tokens = rawMsg.split("\"");
+	String user = null;
+	String msg = null;
+	for(int i=0;i<tokens.length;i++)
+        {
+            if("message".equals(tokens[i])) {
+                voteStr=tokens[i+1].replace(">","").replace("</span</div","");
+            }
+            if(tokens[i].contains("username")) {
+                user=tokens[i+1].replace(">","").split("<")[0];
+            }
+        }
+        System.out.println(user + ": " + voteStr);
+	return new String[] {user, voteStr};
+    }
+
     public static void updateVote() throws Exception
     {
 	//if(playerCount()<1){ updateVote(); } // dont vote
 	String nextChat = null;
 	while((nextChat=getChat()).equals(""))
 	{
+	    doNotifs();
 	    // do nothing until we get a chat msg
 	}
-	String[] tokens = nextChat.split("\"");
-	String voteStr = null;
-	String user = null;
-	for(int i=0;i<tokens.length;i++)
-	{
-	    if("message".equals(tokens[i])) {
-		voteStr=tokens[i+1].replace(">","").replace("</span</div","");
-	    }
-	    if(tokens[i].contains("username")) {
-		user=tokens[i+1].replace(">","").split("<")[0];
-	    }
-	}
-	System.out.println(user + ": " + voteStr);
+	String[] result = parseChat(nextChat);
+	String user = result[0];
+	String voteStr = result[1];
 	if(voteStr.startsWith("!diff"))
 	{
 	    if(!voteStr.contains(" "))
 	    {
 		sendChat(user + " doesn't know how to vote! Point and laugh!");
 	    }else{
+		//System.out.println(voteStr);
 		Integer diff = Integer.valueOf(voteStr.split(" ")[1]);
 		vote.put(user,diff);
 		sendChat(user +  " voted for difficulty " + Integer.toString(diff));
+
+	        Integer winner = -1;
+	        if((winner=tallyVote())!=-1)
+	        {
+	            setDifficulty(winner);
+	        }
+	    }
+        }
+	updateVote();
+    }
+
+    public static void doNotifs()
+    {
+	LocalDateTime n = LocalDateTime.now();
+	if(playerCount()<1){ return; } // no players to see notifs
+	for(Map.Entry<String,Integer> e : notifs.entrySet())
+	{
+	    LocalDateTime lastSent = notifTimes.get(e.getKey());
+	    Integer delay = e.getValue();
+	    if(ChronoUnit.SECONDS.between(lastSent, n)>delay)
+	    {
+		sendChat(e.getKey());
+		notifTimes.put(e.getKey(), n);
 	    }
 	}
-	Integer winner = -1;
-	if((winner=tallyVote())!=-1)
-	{
-	    setDifficulty(winner);
-	}
-	updateVote();
     }
 
     public static Integer tallyVote()
@@ -120,7 +156,9 @@ public class voter
 
     public static void sendChat(String msg) throws Exception
     {
-	post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
+	String chatStr = post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
+    	if(chatStr==null || chatStr.isEmpty()){ return ""; }
+	return chatStr;
     }
 
     public static void setDifficulty(int d) throws Exception
