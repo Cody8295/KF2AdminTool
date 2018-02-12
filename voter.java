@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.time.LocalDateTime;
-import java.time.ChronoUnit;
+import java.time.temporal.ChronoUnit;
 
 public class voter
 {
@@ -46,7 +46,14 @@ public class voter
 
     public static int playerCount() throws Exception
     {
-	String gameSummary = get(BASE_URL + "ServerAdmin/current+gamesummary");
+	String gameSummary = null;
+	try{
+	    gameSummary =  get(BASE_URL + "ServerAdmin/current+gamesummary");
+	}catch(Exception e){
+	    System.out.println("Connection issue 1 (map change?)");
+	    login(getCSRFToken());
+	    gameSummary = get(BASE_URL + "ServerAdmin/current+gamesummary");
+	}
 	String[] tokens = gameSummary.split("\"");
 	for(int i=0;i<tokens.length;i++)
 	{
@@ -59,7 +66,7 @@ public class voter
     {
 	String[] tokens = rawMsg.split("\"");
 	String user = null;
-	String msg = null;
+	String voteStr = null;
 	for(int i=0;i<tokens.length;i++)
         {
             if("message".equals(tokens[i])) {
@@ -106,7 +113,7 @@ public class voter
 	updateVote();
     }
 
-    public static void doNotifs()
+    public static void doNotifs() throws Exception
     {
 	LocalDateTime n = LocalDateTime.now();
 	if(playerCount()<1){ return; } // no players to see notifs
@@ -149,22 +156,42 @@ public class voter
 
     public static String getChat() throws Exception
     {
-	String chatStr = post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1");
+	String chatStr = null;
+	try{
+	    chatStr = post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1");
+	}catch(Exception e){
+	    System.out.println("Connection issue 2 (map change?)");
+	    login(getCSRFToken());
+	    chatStr = post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1");
+	}
 	if(chatStr==null || chatStr.isEmpty()){ return ""; }
 	return chatStr;
     }
 
-    public static void sendChat(String msg) throws Exception
+    public static String sendChat(String msg) throws Exception
     {
-	String chatStr = post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
-    	if(chatStr==null || chatStr.isEmpty()){ return ""; }
+	String chatStr = null;
+	try{
+	    post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
+    	}catch(Exception e){
+	    System.out.println("Connection issue 3 (map change?)");
+	    login(getCSRFToken());
+	    post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
+	}
+	if(chatStr==null || chatStr.isEmpty()){ return ""; }
 	return chatStr;
     }
 
     public static void setDifficulty(int d) throws Exception
     {
-	String changeSettings = post(BASE_URL + SETTINGS, settings.replace("*", Integer.toString(d)));
-	//System.out.println(changeSettings);
+	String changeSettings = null;
+	try{
+	    changeSettings = post(BASE_URL + SETTINGS, settings.replace("*", Integer.toString(d)));
+	}catch(Exception e){
+	    System.out.println("Connection issue 4 (map change?)");
+	    login(getCSRFToken());
+	    changeSettings = post(BASE_URL + SETTINGS, settings.replace("*", Integer.toString(d)));
+	}
 	sendChat("Difficulty changed to " + Integer.toString(d));
     }
 
@@ -179,7 +206,14 @@ public class voter
 
     public static String getCSRFToken() throws Exception
     {
-	String tokenSrc = get(BASE_URL);
+	String tokenSrc = null;
+	try{
+	    tokenSrc = get(BASE_URL);
+	}catch(Exception e){
+	    System.out.println("Connection issue 5 (map change?)");
+	    login(getCSRFToken());
+	    tokenSrc = get(BASE_URL);
+	}
 	String[] tokens = tokenSrc.split("\"");
 	for(int i=0;i<tokens.length;i++)
 	{
@@ -190,41 +224,44 @@ public class voter
 
     public static String post(String url, String params) throws Exception
     {
-	URL uri = new URL(url);
-	HttpURLConnection http = (HttpURLConnection)uri.openConnection();
-	http.setRequestMethod("POST");
-	http.setRequestProperty("User-Agent", UA);
-	http.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
-	http.setDoOutput(true);
-	DataOutputStream ds = new DataOutputStream(http.getOutputStream());
-	ds.writeBytes(params);
-	ds.flush();
-	ds.close();
-	BufferedReader br = new BufferedReader(new InputStreamReader(http.getInputStream()));
-	String line;
-	StringBuffer rb = new StringBuffer();
-	while((line=br.readLine())!=null)
-	{
-	    rb.append(line);
-	}
-	br.close();
-	return rb.toString();
+	    URL uri = new URL(url);
+	    HttpURLConnection http = (HttpURLConnection)uri.openConnection();
+	    http.setRequestMethod("POST");
+ 	    http.setRequestProperty("User-Agent", UA);
+	    http.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+	    http.setDoOutput(true);
+	    DataOutputStream ds = new DataOutputStream(http.getOutputStream());
+	    ds.writeBytes(params);
+	    ds.flush();
+	    ds.close();
+	    BufferedReader br = new BufferedReader(new InputStreamReader(http.getInputStream()));
+	    String line;
+	    StringBuffer rb = new StringBuffer();
+	    while((line=br.readLine())!=null)
+	    {
+	        rb.append(line);
+	    }
+	    br.close();
+	    return rb.toString();
     }
 
     public static String get(String url) throws Exception
     {
-	URL uri = new URL(url);
-	HttpURLConnection http = (HttpURLConnection)uri.openConnection();
-	http.setRequestMethod("GET");
-	http.setRequestProperty("User-Agent", UA);
-	BufferedReader br = new BufferedReader(new InputStreamReader(http.getInputStream()));
-	String line;
-	StringBuffer rb = new StringBuffer();
-	while((line=br.readLine())!=null)
-	{
-	    rb.append(line);
-	}
-	br.close();
-	return rb.toString();
+	    URL uri = new URL(url);
+	    HttpURLConnection http = (HttpURLConnection)uri.openConnection();
+	    //System.out.println("Couldn't connect to WebAdmin (map change?)");
+	    //login(getCSRFToken());
+	    //http = (HttpURLConnection)uri.openConnection();
+	    http.setRequestMethod("GET");
+ 	    http.setRequestProperty("User-Agent", UA);
+	    BufferedReader br = new BufferedReader(new InputStreamReader(http.getInputStream()));
+	    String line;
+	    StringBuffer rb = new StringBuffer();
+	    while((line=br.readLine())!=null)
+	    {
+	        rb.append(line);
+	    }
+	    br.close();
+	    return rb.toString();
     }
 }
