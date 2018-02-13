@@ -86,6 +86,7 @@ public class voter
 	String nextChat = null;
 	while((nextChat=getChat()).equals(""))
 	{
+	    //System.out.println("No chat");
 	    doNotifs();
 	    // do nothing until we get a chat msg
 	}
@@ -96,12 +97,12 @@ public class voter
 	{
 	    if(!voteStr.contains(" "))
 	    {
-		sendChat(user + " doesn't know how to vote! Point and laugh!");
+		parseChat(sendChat(user + " doesn't know how to vote! Point and laugh!"));
 	    }else{
 		//System.out.println(voteStr);
 		Integer diff = Integer.valueOf(voteStr.split(" ")[1]);
 		vote.put(user,diff);
-		sendChat(user +  " voted for difficulty " + Integer.toString(diff));
+		parseChat(sendChat(user +  " voted for difficulty " + Integer.toString(diff)));
 
 	        Integer winner = -1;
 	        if((winner=tallyVote())!=-1)
@@ -116,14 +117,16 @@ public class voter
     public static void doNotifs() throws Exception
     {
 	LocalDateTime n = LocalDateTime.now();
-	if(playerCount()<1){ return; } // no players to see notifs
+	//if(playerCount()<1){ return; } // no players to see notifs
 	for(Map.Entry<String,Integer> e : notifs.entrySet())
 	{
 	    LocalDateTime lastSent = notifTimes.get(e.getKey());
 	    Integer delay = e.getValue();
+	    //System.out.println(Integer.toString(delay));
+	    //System.out.println(Long.toString(ChronoUnit.SECONDS.between(lastSent, n)));
 	    if(ChronoUnit.SECONDS.between(lastSent, n)>delay)
 	    {
-		sendChat(e.getKey());
+		parseChat(sendChat(e.getKey()));
 		notifTimes.put(e.getKey(), n);
 	    }
 	}
@@ -172,11 +175,11 @@ public class voter
     {
 	String chatStr = null;
 	try{
-	    post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
+	    chatStr = post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
     	}catch(Exception e){
 	    System.out.println("Connection issue 3 (map change?)");
 	    login(getCSRFToken());
-	    post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
+	    chatStr = post(BASE_URL + "ServerAdmin/current/chat+frame+data", "ajax=1&message=" + msg + "&teamsay=-1");
 	}
 	if(chatStr==null || chatStr.isEmpty()){ return ""; }
 	return chatStr;
@@ -192,7 +195,7 @@ public class voter
 	    login(getCSRFToken());
 	    changeSettings = post(BASE_URL + SETTINGS, settings.replace("*", Integer.toString(d)));
 	}
-	sendChat("Difficulty changed to " + Integer.toString(d));
+	parseChat(sendChat("Difficulty changed to " + Integer.toString(d)));
     }
 
     public static Boolean login(String csrft) throws Exception
