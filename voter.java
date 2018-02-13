@@ -67,18 +67,24 @@ public class voter
 	String[] tokens = rawMsg.split("\"");
 	String user = null;
 	String voteStr = null;
+	Boolean teamSay = false;
 	for(int i=0;i<tokens.length;i++)
         {
+	    if("teamnotice".equals(tokens[i])){ teamSay=true; }
             if("message".equals(tokens[i])) {
-                voteStr=tokens[i+1].replace(">","").replace("</span</div","");
+                voteStr=tokens[i+1].replace(">","").replace("</span</div","").replace("<span class=","");
             }
             if(tokens[i].contains("username")) {
-                user=tokens[i+1].replace(">","").split("<")[0];
+		if(teamSay){
+		    user="("+tokens[i+2].replace(">","")+") "+tokens[i+3].replace("</span>","");
+		}else{
+                    user=tokens[i+1].replace(">","").split("<")[0]; }
             }
         }
         System.out.println(user + ": " + voteStr);
 	return new String[] {user, voteStr};
     }
+// SURVIVOR Team>Deliverance</span>:<span class=: y
 
     public static void updateVote() throws Exception
     {
