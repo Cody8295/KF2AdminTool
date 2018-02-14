@@ -31,7 +31,7 @@ public class voter
 	notifs = new HashMap<String,Integer>();
 	notifTimes = new HashMap<String,LocalDateTime>();
 	notifTimes.put(notif1,LocalDateTime.now());
-	notifs.put(notif1,120);
+	notifs.put(notif1,1600);
 	vote = new HashMap<String,Integer>();
 	cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
 	CookieHandler.setDefault(cookieManager);
